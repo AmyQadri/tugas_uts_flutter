@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'register.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'home.dart';
-
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -12,15 +13,81 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscureText = true;
+  bool _isFormValid = false;
+
+  void _validateForm() {
+    setState(() {
+      _isFormValid = _formKey.currentState?.validate() ?? false;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.addListener(_validateForm);
+    _passwordController.addListener(_validateForm);
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loginUser() async {
+    final String email = _emailController.text;
+    final String password = _passwordController.text;
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://example.com/api/login'), // GANTI dengan URL API kamu
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['token'] != null) {
+          // Bisa simpan token di SharedPreferences atau SecureStorage jika perlu
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HomePage()),
+          );
+        } else {
+          _showErrorDialog('Login gagal: Token tidak ditemukan.');
+        }
+      } else {
+        final data = jsonDecode(response.body);
+        _showErrorDialog(data['message'] ?? 'Login gagal. Coba lagi.');
+      }
+    } catch (e) {
+      _showErrorDialog('Terjadi kesalahan koneksi.');
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Login Gagal'),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+    );
   }
 
   @override
@@ -30,189 +97,281 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              IconButton(
-                icon: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.arrow_back_ios, color: Color(0xFF184A2C), size: 18),
-                    Text(
-                      "Back",
-                      style: TextStyle(
+          child: Form(
+            key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            onChanged: _validateForm,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                IconButton(
+                  icon: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.arrow_back_ios,
                         color: Color(0xFF184A2C),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                        size: 18,
                       ),
-                    ),
-                  ],
-                ),
-                onPressed: () {
-                  Navigator.pushReplacementNamed(context, '/');
-                },
-              ),
-              const SizedBox(height: 20),
-              
-              const Align(
-                alignment: Alignment.center,
-                child: Text(
-                  "LOGIN",
-                  style: TextStyle(
-                    color: Color(0xFF184A2C),
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                      Text(
+                        "Back",
+                        style: TextStyle(
+                          color: Color(0xFF184A2C),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              
-              Align(
-                alignment: Alignment.center,
-                child: SvgPicture.asset(
-                  'assets/images/login.svg',
-                  height: 180,
-                  fit: BoxFit.contain,
-                ),
-              ),
-              const SizedBox(height: 40),
-              
-              Row(
-                children: [
-                  const Icon(Icons.person, color: Colors.black54),
-                  const SizedBox(width: 10),
-                  const Text(
-                    "Email",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  contentPadding: EdgeInsets.symmetric(vertical: 10),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black54),
-                  ),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF184A2C), width: 2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              
-              Row(
-                children: [
-                  const Icon(Icons.lock, color: Colors.black54),
-                  const SizedBox(width: 10),
-                  const Text(
-                    "password",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-              TextField(
-                controller: _passwordController,
-                obscureText: _obscureText,
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                  enabledBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.black54),
-                  ),
-                  focusedBorder: const UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF184A2C), width: 2),
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscureText ? Icons.visibility_off : Icons.visibility,
-                      color: Colors.grey,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscureText = !_obscureText;
-                      });
-                    },
-                  ),
-                ),
-              ),
-              
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
                   onPressed: () {
+                    Navigator.pushReplacementNamed(context, '/');
                   },
-                  child: const Text(
-                    "Forgot Password?",
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: 12,
-                    ),
-                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const HomePage()),
-                      );
-                      },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF184A2C),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                  ),
-                  child: const Text(
+                const SizedBox(height: 20),
+                const Align(
+                  alignment: Alignment.center,
+                  child: Text(
                     "LOGIN",
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
+                      color: Color(0xFF184A2C),
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    "No have account? ",
-                    style: TextStyle(color: Colors.black54),
+                const SizedBox(height: 20),
+                Align(
+                  alignment: Alignment.center,
+                  child: SvgPicture.asset(
+                    'assets/images/login.svg',
+                    height: 180,
+                    fit: BoxFit.contain,
                   ),
-                  InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const RegisterPage()),
-                      );      
-                      },
-                    child: const Text(
-                      "Sign Up",
-                      style: TextStyle(
+                ),
+                const SizedBox(height: 40),
+
+                // === Email Input ===
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    labelStyle: TextStyle(
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    prefixIcon: Icon(Icons.person, color: Colors.black54),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Colors.black54),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(
                         color: Color(0xFF184A2C),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Email tidak boleh kosong';
+                    } else if (!RegExp(
+                      r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$',
+                    ).hasMatch(value)) {
+                      return 'Format email tidak valid';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 20),
+
+                // === Password Input ===
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscureText,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    labelStyle: const TextStyle(
+                      color: Colors.black54,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    prefixIcon: const Icon(Icons.lock, color: Colors.black54),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureText ? Icons.visibility_off : Icons.visibility,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscureText = !_obscureText;
+                        });
+                      },
+                    ),
+                    enabledBorder: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: Colors.black54),
+                    ),
+                    focusedBorder: const UnderlineInputBorder(
+                      borderSide: BorderSide(
+                        color: Color(0xFF184A2C),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Password tidak boleh kosong';
+                    } else if (value.length < 8) {
+                      return 'Password minimal 8 karakter';
+                    }
+                    return null;
+                  },
+                ),
+
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {},
+                    child: const Text(
+                      "Forgot Password?",
+                      style: TextStyle(color: Colors.black54, fontSize: 12),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // === Tombol LOGIN ===
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed:
+                        _isFormValid
+                            ? () async {
+                              try {
+                                final url = Uri.parse(
+                                  "http://192.168.1.22/panduan_muslim/login.php",
+                                );
+
+                                final response = await http.post(
+                                  url,
+                                  body: {
+                                    "email": _emailController.text,
+                                    "password": _passwordController.text,
+                                  },
+                                );
+
+                                if (response.statusCode == 200) {
+                                  final data = jsonDecode(response.body);
+
+                                  if (data['success'] == true) {
+                                    showDialog(
+                                      context: context,
+                                      builder:
+                                          (context) => AlertDialog(
+                                            title: const Text('Login Berhasil'),
+                                            content: const Text(
+                                              'Selamat datang kembali!',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.pop(context);
+                                                  Navigator.pushReplacement(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder:
+                                                          (context) =>
+                                                              const HomePage(),
+                                                    ),
+                                                  );
+                                                },
+                                                child: const Text('Lanjut'),
+                                              ),
+                                            ],
+                                          ),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          data['message'] ??
+                                              'Email atau password salah.',
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Terjadi kesalahan pada server.',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                debugPrint('Login Error: $e');
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Gagal terhubung ke server.'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                            : null,
+
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF184A2C),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                    ),
+                    child: const Text(
+                      "LOGIN",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                ],
-              ),
-            ],
+                ),
+
+                const SizedBox(height: 20),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      "No have account? ",
+                      style: TextStyle(color: Colors.black54),
+                    ),
+                    InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RegisterPage(),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        "Sign Up",
+                        style: TextStyle(
+                          color: Color(0xFF184A2C),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
