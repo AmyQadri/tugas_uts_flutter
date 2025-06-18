@@ -404,7 +404,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           _isFormValid
                               ? () async {
                                 var url = Uri.parse(
-                                  "http://192.168.1.22/panduan_muslim/register.php",
+                                  "http://192.168.1.6/panduan_muslim/register.php",
                                 ); // ganti sesuai IP kalau pakai HP fisik
                                 var response = await http.post(
                                   url,

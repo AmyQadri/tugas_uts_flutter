@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'register.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -37,40 +38,6 @@ class _LoginPageState extends State<LoginPage> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loginUser() async {
-    final String email = _emailController.text;
-    final String password = _passwordController.text;
-
-    try {
-      final response = await http.post(
-        Uri.parse('https://example.com/api/login'), // GANTI dengan URL API kamu
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'email': email, 'password': password}),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['token'] != null) {
-          // Bisa simpan token di SharedPreferences atau SecureStorage jika perlu
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomePage()),
-          );
-        } else {
-          _showErrorDialog('Login gagal: Token tidak ditemukan.');
-        }
-      } else {
-        final data = jsonDecode(response.body);
-        _showErrorDialog(data['message'] ?? 'Login gagal. Coba lagi.');
-      }
-    } catch (e) {
-      _showErrorDialog('Terjadi kesalahan koneksi.');
-    }
   }
 
   void _showErrorDialog(String message) {
@@ -251,7 +218,7 @@ class _LoginPageState extends State<LoginPage> {
                             ? () async {
                               try {
                                 final url = Uri.parse(
-                                  "http://192.168.1.22/panduan_muslim/login.php",
+                                  "http://192.168.1.6/panduan_muslim/login.php",
                                 );
 
                                 final response = await http.post(
@@ -266,6 +233,11 @@ class _LoginPageState extends State<LoginPage> {
                                   final data = jsonDecode(response.body);
 
                                   if (data['success'] == true) {
+                                      if (data['nama_lengkap'] != null) {
+                                        SharedPreferences prefs = await SharedPreferences.getInstance();
+                                        await prefs.setString('nama_lengkap', data['nama_lengkap']);
+                                      }
+
                                     showDialog(
                                       context: context,
                                       builder:
